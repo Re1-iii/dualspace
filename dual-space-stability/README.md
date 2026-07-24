@@ -54,11 +54,11 @@ Then import from the `dual_space` package (copy the folder into your project, or
 
 ```python
 import torch, torch.nn.functional as F
-from dual_space import (UGFECTv2Augmentor, random_scale_size,
+from dual_space import (DualSpaceStyleAugmentor, random_scale_size,
                         scale_consistency_loss, gated_consistency_loss, DiceBCELoss)
 
 seg_loss  = DiceBCELoss(bce_weight=0.5)
-style_aug = UGFECTv2Augmentor()
+style_aug = DualSpaceStyleAugmentor()
 
 def training_step(model, imgs, masks, img_size=352, lam_sty=1.0, lam_sca=1.0):
     logits  = model(imgs)
@@ -88,6 +88,63 @@ update_bn(train_loader, deployed, device)                     # re-estimate BN
 A runnable version is in `example_usage.py`. Each module also has a
 `__main__` self-test (`python -m dual_space.scale_consistency`, etc.).
 
+## Repository layout
+
+```
+dual_space/           the three stability axes (importable, framework-agnostic)
+  fourier_style.py    style axis  -- Fourier amplitude perturbation (Sec. 3.2)
+  losses.py           uncertainty gate + gated consistency (Sec. 3.3)
+  scale_consistency.py scale axis (Sec. 3.4)
+  swad.py             weight axis -- flat-minima averaging (Sec. 3.5)
+models/pvtv2_unet.py  PVTv2-B2 + U-Net backbone used in the paper
+dataset.py            PraNet-protocol datasets
+train.py              training script for all reported configurations
+example_usage.py      minimal integration example
+```
+
+## Reproducing the paper
+
+**1. Data.** Download the five datasets and arrange them as:
+
+```
+data/
+  TrainDataset/                  image/ masks/          # 1450 images
+  TestDataset/
+    Kvasir/  CVC-ClinicDB/       images/ masks/         # seen
+    CVC-ColonDB/  ETIS-LaribPolypDB/  CVC-300/          # unseen
+```
+
+**2. Encoder weights.** Download `pvt_v2_b2.pth` into `./pretrained/` from
+<https://github.com/whai362/PVT/releases/download/v2/pvt_v2_b2.pth>.
+
+**3. Train.** Each row of the ablation table corresponds to one command:
+
+```bash
+# Baseline
+python train.py --data_root ./data --epochs 100 --mode baseline
+
+# + Fourier perturbation and gated consistency  (style axis)
+python train.py --data_root ./data --epochs 100 --mode dg
+
+# + scale axis
+python train.py --data_root ./data --epochs 100 --mode dg --use_scale_consistency
+
+# + weight axis
+python train.py --data_root ./data --epochs 100 --mode dg --use_swad
+
+# Full model
+python train.py --data_root ./data --epochs 100 --mode dg \
+    --use_swad --use_scale_consistency
+```
+
+Defaults match the paper: `p = 0.7`, `alpha = 1.0`, `beta = 0.05` (half-width),
+scale range `[0.5, 1.0]`, consistency weights `1.0`, SWAD `N_s = 3`, `N_e = 6`,
+`r = 1.3`, AdamW with cosine annealing, batch size 4, 100 epochs, 352x352 inputs.
+
+Flags for the optional components that are **not** part of the reported results
+(`--use_polyp_aware`, `--use_adversarial`, `--use_feat_consistency`) are kept for
+ablation only.
+
 ## Notes
 
 - All losses are **binary** (single-channel logits + sigmoid). For multi-class,
@@ -96,7 +153,7 @@ A runnable version is in `example_usage.py`. Each module also has a
   runs in fp32.
 - `fourier_style.py` also provides simpler entry points
   (`fourier_style_perturbation`, `fourier_style_swap`, `FourierDomainAugmentor`)
-  if you do not need the full `UGFECTv2Augmentor`.
+  if you do not need the full `DualSpaceStyleAugmentor`.
 
 ## Citation
 

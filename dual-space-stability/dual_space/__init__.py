@@ -13,7 +13,7 @@ from .fourier_style import (
     fourier_style_perturbation,
     fourier_style_swap,
     FourierDomainAugmentor,
-    UGFECTv2Augmentor,
+    DualSpaceStyleAugmentor,
 )
 from .scale_consistency import random_scale_size, scale_consistency_loss
 from .swad import SWAD, update_bn
@@ -26,7 +26,7 @@ from .losses import (
 
 __all__ = [
     "fourier_style_perturbation", "fourier_style_swap",
-    "FourierDomainAugmentor", "UGFECTv2Augmentor",
+    "FourierDomainAugmentor", "DualSpaceStyleAugmentor",
     "random_scale_size", "scale_consistency_loss",
     "SWAD", "update_bn",
     "confidence_map", "gated_consistency_loss",

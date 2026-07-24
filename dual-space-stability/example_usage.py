@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 
 from dual_space import (
-    UGFECTv2Augmentor,          # style axis (Fourier amplitude perturbation)
+    DualSpaceStyleAugmentor,          # style axis (Fourier amplitude perturbation)
     random_scale_size, scale_consistency_loss,   # scale axis
     SWAD, update_bn,            # weight axis
     DiceBCELoss, gated_consistency_loss,
@@ -21,7 +21,7 @@ from dual_space import (
 
 # ---- set up once ----
 seg_loss = DiceBCELoss(bce_weight=0.5)
-style_aug = UGFECTv2Augmentor()          # produces the style variant x'
+style_aug = DualSpaceStyleAugmentor()          # produces the style variant x'
 swad = SWAD()                            # accumulates flat-minima weights
 lam_sty, lam_sca = 1.0, 1.0
 img_size = 352

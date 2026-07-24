@@ -87,3 +87,42 @@ if __name__ == '__main__':
     seg = DiceBCELoss()(torch.randn(2, 1, 64, 64), (teacher > 0.5).float())
     print(f"DiceBCE = {seg.item():.5f}")
     print("losses OK")
+
+
+class DiceBCEWithUncertaintyConsistency(nn.Module):
+    def __init__(self, bce_weight=0.5, consistency_weight=0.5,
+                 use_uncertainty_gate=True):
+        super().__init__()
+        self.seg_loss = DiceBCELoss(bce_weight)
+        self.consistency_weight = consistency_weight
+        # ablation switch: False -> plain (ungated) consistency, confidence == 1
+        self.use_uncertainty_gate = use_uncertainty_gate
+    
+    def forward(self, pred_orig, pred_aug, target):
+        # supervised segmentation loss
+        loss_seg = self.seg_loss(pred_orig, target)
+        
+        # convert to probabilities
+        p1 = torch.sigmoid(pred_orig).detach()  # clean prediction acts as the teacher
+        p2 = torch.sigmoid(pred_aug)            # perturbed-view prediction
+        
+        # per-pixel binary entropy of the teacher (clamped to avoid log(0))
+        p1_clamp = torch.clamp(p1, 1e-6, 1.0 - 1e-6)
+        entropy = - (p1_clamp * torch.log(p1_clamp) + (1.0 - p1_clamp) * torch.log(1.0 - p1_clamp))
+        
+        # normalise the entropy and turn it into a confidence map
+        max_entropy = math.log(2.0)
+        entropy_norm = entropy / max_entropy
+        confidence = 1.0 - entropy_norm
+        
+        # consistency loss: confidence-gated (default) or plain MSE (ablation)
+        mse_pixel = F.mse_loss(p2, p1, reduction='none')
+        if self.use_uncertainty_gate:
+            loss_consistency = (mse_pixel * confidence).mean()
+        else:
+            loss_consistency = mse_pixel.mean()
+        
+        # total
+        total = loss_seg + self.consistency_weight * loss_consistency
+        
+        return total, loss_seg.item(), loss_consistency.item()

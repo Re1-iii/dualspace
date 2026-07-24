@@ -23,7 +23,7 @@ Public API (used by the paper's method):
     fourier_style_perturbation(img, ...)      # Gaussian-noise strategy (1) on Ω_β
     fourier_style_swap(img1, img2, ...)       # batch amplitude-swap strategy (2)
     FourierDomainAugmentor                    # per-image random perturb/swap
-    UGFECTv2Augmentor                         # the augmentor used in the paper
+    DualSpaceStyleAugmentor                         # the augmentor used in the paper
 
 Optional (not required to reproduce the paper; provided for ablation):
     PolypAwareAugmentor        # foreground/background-adaptive perturbation
@@ -322,7 +322,7 @@ def adversarial_lowfreq_perturbation(imgs, model,
 # This is the entry point used by the paper (plain path by default).
 # ---------------------------------------------------------------------------
 
-class UGFECTv2Augmentor:
+class DualSpaceStyleAugmentor:
     """Produce the style variant x'. The defaults reproduce the paper's setting
     (plain random Fourier with mode='both'); the flags below are for ablation:
 
@@ -425,6 +425,6 @@ if __name__ == '__main__':
     print(f"[adv] model restored to train(): {dummy.training}")
 
     # ---- unified augmentor ----
-    gen = UGFECTv2Augmentor(use_polyp_aware=True, use_adversarial=True, adv_prob=0.5)
+    gen = DualSpaceStyleAugmentor(use_polyp_aware=True, use_adversarial=True, adv_prob=0.5)
     out = gen(imgs, masks, dummy)
     print(f"\n[gen] output shape: {tuple(out.shape)}")
